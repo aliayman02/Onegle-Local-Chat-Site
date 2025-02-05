@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onegle Chat</title>
+    <link rel="stylesheet" href="styles.css"> <!-- Link to external CSS -->
+</head>
+<body>
+    <h1>Onegle Chat</h1>
+    <div id="room-container">
+        <h2>Chat Rooms</h2>
+        <div id="rooms-list">
+            <button onclick="joinRoom('Room1')">Room1</button>
+            <button onclick="joinRoom('Room2')">Room2</button>
+            <button onclick="joinRoom('Room3')">Room3</button>
+        </div>
+        <input id="new-room-name" type="text" placeholder="New room name" autocomplete="off" />
+        <button id="create-room-button" onclick="createRoom()">Create/Join Room</button>
+    </div>
+
+    <div id="chat-container" style="display: none;">
+        <div id="room-name-display"></div>
+        <div id="chat-box"></div>
+        <div id="input-container">
+            <input id="username-input" type="text" placeholder="Enter your username" autocomplete="off" />
+            <input id="message-input" type="text" placeholder="Type a message..." autocomplete="off" />
+            <button onclick="sendMessage()">Send</button>
+            <button id="image-icon" onclick="document.getElementById('image-input').click();" style="background: transparent; border: none; cursor: pointer; font-size: 1.5rem;">🖼️</button>
+        </div>
+        <button id="home-button" onclick="returnHome()">Return to Homepage</button>
+    </div>
+    <input type="file" id="image-input" style="display: none;" accept="image/*" onchange="sendImage(event)" />
+
+    <script>
+        let ws;
+        let currentRoom = "";
+
+        function joinRoom(roomName) {
+            setupRoomDisplay(roomName);
+            connectToWebSocket(roomName);
+        }
+
+        function setupRoomDisplay(roomName) {
+            currentRoom = roomName;
+            document.getElementById("room-name-display").innerText = `You are in Room: ${roomName}`;
+            document.getElementById("chat-container").style.display = "flex";
+            document.getElementById("room-container").style.display = "none";
+            document.getElementById("chat-box").innerHTML = "";
+        }
+
+        function connectToWebSocket(roomName) {
+            if (ws) ws.close();
+            ws = new WebSocket(`ws://${window.location.hostname}:8080/ws/${roomName}`);
+
+            ws.onopen = () => console.log(`Connected to room: ${roomName}`);
+            ws.onmessage = (event) => displayMessage(event);
+            ws.onclose = (event) => handleDisconnection(event, roomName);
+        }
+
+        function displayMessage(event) {
+            const msg = JSON.parse(event.data);
+            const chatBox = document.getElementById('chat-box');
+            let newMessage = `<p><strong>${msg.username}:</strong> ${msg.content}</p>`;
+            if (msg.image) {
+                newMessage += `<img src="${msg.image}" width="100" height="100" />`;
+            }
+            chatBox.innerHTML += newMessage;
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function handleDisconnection(event, roomName) {
+            if (event.wasClean) {
+                console.log(`Disconnected from room: ${roomName}`);
+            } else {
+                console.log(`Unexpected disconnection from room: ${roomName}`);
+                alert("Disconnected from the server. Please try reconnecting.");
+            }
+        }
+
+        function createRoom() {
+            const roomName = document.getElementById("new-room-name").value;
+            if (roomName) joinRoom(roomName);
+        }
+
+        function sendMessage() {
+            const username = document.getElementById("username-input").value || "Anonymous";
+            const message = document.getElementById("message-input").value.trim();
+            if (!message) return;
+
+            ws.send(JSON.stringify({ username, content: message, image: "" }));
+            document.getElementById("message-input").value = "";
+        }
+
+        function sendImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const username = document.getElementById("username-input").value || "Anonymous";
+                ws.send(JSON.stringify({ username, content: "", image: reader.result }));
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function returnHome() {
+            document.getElementById("chat-container").style.display = "none";
+            document.getElementById("room-container").style.display = "flex";
+            if (ws) ws.close();
+        }
+    </script>
+</body>
+</html>

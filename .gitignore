@@ -1,0 +1,24 @@
+ECHO is on.
+# Binaries and build output
+/bin/
+*.exe
+*.out
+*.dll
+
+# Logs
+*.log
+
+# Dependency directories
+/vendor/
+
+# IDE and editor settings
+.vscode/
+.idea/
+*.swp
+
+# OS-specific files
+.DS_Store  # macOS
+Thumbs.db  # Windows
+
+# Environment variables and sensitive files
+.env
